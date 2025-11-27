@@ -1,13 +1,13 @@
 // ===========================================================================
-// APP CONDUCTOR (DRIVER) - VERSIÓN MAESTRA FINAL (CORREGIDA)
+// APP CONDUCTOR (DRIVER) - VERSIÓN MAESTRA FINAL (CORREGIDA V2)
 // ===========================================================================
 //
 // CARACTERÍSTICAS INCLUIDAS:
-// 1. Auth & Dashboard (Online/Offline).
+// 1. Auth & Dashboard (Online/Offline) + Solicitud detallada.
 // 2. Servicios Agendados/En Curso en el Dashboard.
 // 3. Historial Detallado (Ruta, Carga, Ganancia Neta).
 // 4. Módulo de Pagos (Consignaciones de la App al Conductor).
-// 5. Registro de Vehículo (Normativa Colombia: SOAT, Tecno, Tarjeta Propiedad).
+// 5. Registro de Vehículo (Normativa Colombia).
 
 import 'package:flutter/material.dart'; // [EDU] UI Base
 import 'package:google_fonts/google_fonts.dart'; // [EDU] Fuentes
@@ -24,7 +24,7 @@ class AppColors {
   static const Color background = Color(0xFFF3F4F6); // Gris suave
   static const Color green = Color(0xFF10B981);  // Dinero / Éxito
   static const Color red = Color(0xFFEF4444);    // Error / Offline
-  static const Color text = Color(0xFF1F2937);   // [CORRECCIÓN] Agregado color de texto
+  static const Color text = Color(0xFF1F2937);   // Color texto general
 }
 
 void main() {
@@ -44,7 +44,7 @@ class AppCarreosDriver extends StatelessWidget {
         primaryColor: AppColors.blue,
         scaffoldBackgroundColor: AppColors.background,
         useMaterial3: true,
-        // [EDU] Estilo unificado para Inputs de formularios (Vehículos, Login)
+        // [EDU] Estilo unificado para Inputs
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
@@ -162,7 +162,7 @@ class _DriverAuthScreenState extends State<DriverAuthScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// 3. DASHBOARD PRINCIPAL (CON SERVICIOS ASIGNADOS)
+// 3. DASHBOARD PRINCIPAL (CON SOLICITUD DETALLADA)
 // ---------------------------------------------------------------------------
 class DriverDashboard extends StatefulWidget {
   const DriverDashboard({super.key});
@@ -232,7 +232,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
               ),
             ),
 
-            // SECCIÓN: SERVICIOS ASIGNADOS (NUEVO)
+            // SECCIÓN: SERVICIOS ASIGNADOS
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -241,9 +241,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
                   if (_isOnline) ...[
                     const Text("Servicios Asignados", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.blue)),
                     const SizedBox(height: 10),
-                    // Tarjeta de Servicio Agendado
                     _scheduledServiceCard(context, "Mudanza Oficina", "Mañana, 8:00 AM", "\$ 250.000", "Calle 100 -> Chía"),
-                    // Tarjeta de Servicio en Curso (Si hubiera)
                     _scheduledServiceCard(context, "Entrega Muebles", "En Curso", "\$ 45.000", "Homecenter -> Norte", isActive: true),
                   ] else ...[
                     const SizedBox(height: 50),
@@ -260,7 +258,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
     );
   }
 
-  // Tarjeta de servicio agendado o en curso
+  // Helper para dibujar tarjetas de servicios
   Widget _scheduledServiceCard(BuildContext context, String title, String time, String price, String route, {bool isActive = false}) {
     return GestureDetector(
       onTap: () {
@@ -329,16 +327,91 @@ class _DriverDashboardState extends State<DriverDashboard> {
 
   Widget _buildStat(String label, String value) => Column(children: [Text(label, style: const TextStyle(color: Colors.white70)), Text(value, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold))]);
 
-  // Modal de solicitud (Sin cambios en lógica, solo para mantener la feature)
+  // === MODAL DE NUEVA SOLICITUD (COMPLETO) ===
   void _showNewRequestDialog(BuildContext context) {
-    showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (context) => Container(
-        padding: const EdgeInsets.all(25), decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text("¡Nueva Solicitud!", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.green)),
-          const SizedBox(height: 20),
-          SizedBox(width: double.infinity, height: 50, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: AppColors.green), onPressed: () {Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => const ActiveTripScreen()));}, child: const Text("ACEPTAR SERVICIO")))
-        ])
-    ));
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(25),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start, // Alineado para leer bien la ruta
+          children: [
+            Center(child: Container(width: 40, height: 4, color: Colors.grey[300])), // Manija
+            const SizedBox(height: 20),
+
+            // Header: Ganancia y Título
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Nuevo Servicio", style: TextStyle(fontSize: 18, color: Colors.grey)),
+                const Text("\$45.000", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: AppColors.green)),
+              ],
+            ),
+            const Divider(height: 30),
+
+            // Línea de Ruta (Recuperada)
+            _buildRouteStep(Icons.circle, Colors.green, "Homecenter Calle 80", "Recogida • 2.5 km"),
+            Container(margin: const EdgeInsets.only(left: 11), height: 30, width: 2, color: Colors.grey[300]),
+            _buildRouteStep(Icons.location_on, AppColors.orange, "Cra 15 # 100-23", "Entrega • 3er Piso (Ascensor)"),
+
+            const SizedBox(height: 20),
+
+            // Detalle de Carga (Recuperado)
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
+              child: Row(
+                children: const [
+                  Icon(FontAwesomeIcons.box, size: 16, color: AppColors.blue),
+                  SizedBox(width: 10),
+                  Text("Carga: Mueble TV + 2 Sillas", style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // Botón Aceptar
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.green),
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const ActiveTripScreen()));
+                },
+                child: const Text("ACEPTAR SERVICIO", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget local para dibujar los pasos de la ruta en el modal
+  Widget _buildRouteStep(IconData icon, Color color, String title, String subtitle) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(width: 15),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          ],
+        )
+      ],
+    );
   }
 }
 
@@ -350,7 +423,6 @@ class DriverHistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Datos Dummy
     final history = [
       {'date': 'Hoy, 10:30 AM', 'route': 'Homecenter -> Norte', 'total': '45.000', 'net': '38.000', 'status': 'Finalizado'},
       {'date': 'Ayer, 4:00 PM', 'route': 'Unicentro -> Soacha', 'total': '120.000', 'net': '102.000', 'status': 'Finalizado'},
@@ -372,7 +444,6 @@ class DriverHistoryScreen extends StatelessWidget {
               subtitle: Text("${item['date']} • ${item['route']}"),
               trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
               onTap: () {
-                // [EDU] Navegamos al detalle "Rico"
                 Navigator.push(context, MaterialPageRoute(builder: (context) => DriverTripDetailScreen(data: item)));
               },
             ),
@@ -384,7 +455,7 @@ class DriverHistoryScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 5. DETALLE DETALLADO DEL VIAJE (NUEVO - ESTILO CLIENTE)
+// 5. DETALLE DETALLADO DEL VIAJE
 // ---------------------------------------------------------------------------
 class DriverTripDetailScreen extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -399,7 +470,6 @@ class DriverTripDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Ganancia
             Center(
               child: Column(
                 children: [
@@ -413,7 +483,6 @@ class DriverTripDetailScreen extends StatelessWidget {
             ),
             const Divider(height: 40),
 
-            // Información del Cliente
             const Text("Cliente", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 10),
             ListTile(
@@ -425,7 +494,6 @@ class DriverTripDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Ruta
             const Text("Ruta Realizada", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 10),
             _locationRow(Icons.circle, Colors.green, "Recogida", "Homecenter Calle 80"),
@@ -434,7 +502,6 @@ class DriverTripDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 25),
 
-            // Carga
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(15),
@@ -449,7 +516,6 @@ class DriverTripDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 25),
 
-            // Desglose Financiero (Importante para drivers)
             const Text("Balance Financiero", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 10),
             _priceRow("Valor Cobrado al Cliente", "\$ ${data['total']}"),
@@ -485,7 +551,7 @@ class DriverTripDetailScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 6. GESTIÓN DE VEHÍCULOS (FORMULARIO COLOMBIA)
+// 6. GESTIÓN DE VEHÍCULOS
 // ---------------------------------------------------------------------------
 class MyVehiclesScreen extends StatelessWidget {
   const MyVehiclesScreen({super.key});
@@ -518,7 +584,7 @@ class AddVehicleScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Agregar Vehículo")),
-      body: SingleChildScrollView( // [EDU] Formulario largo necesita scroll
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -574,7 +640,7 @@ class AddVehicleScreen extends StatelessWidget {
       child: OutlinedButton.icon(
         onPressed: (){},
         icon: const Icon(Icons.camera_alt, color: AppColors.blue),
-        label: Text(textLabel, style: const TextStyle(color: AppColors.text)), // [CORRECCIÓN] Usando textLabel
+        label: Text(textLabel, style: const TextStyle(color: AppColors.text)),
         style: OutlinedButton.styleFrom(padding: const EdgeInsets.all(15), alignment: Alignment.centerLeft),
       ),
     );
@@ -582,7 +648,7 @@ class AddVehicleScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 7. PAGOS (BILLETERA & CONSIGNACIONES)
+// 7. PAGOS (BILLETERA)
 // ---------------------------------------------------------------------------
 class DriverPayoutsScreen extends StatelessWidget {
   const DriverPayoutsScreen({super.key});
@@ -596,7 +662,6 @@ class DriverPayoutsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Saldo actual
             Container(
               padding: const EdgeInsets.all(20),
               width: double.infinity,
@@ -613,7 +678,6 @@ class DriverPayoutsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 25),
 
-            // Cuentas Bancarias
             const Text("Cuenta de Depósito", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 10),
             ListTile(
@@ -625,7 +689,6 @@ class DriverPayoutsScreen extends StatelessWidget {
             ),
             const Divider(),
 
-            // Historial de Transferencias
             const SizedBox(height: 15),
             const Text("Historial de Consignaciones", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 10),
@@ -650,7 +713,7 @@ class DriverPayoutsScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 8. PANTALLA DE VIAJE ACTIVO (WORKFLOW)
+// 8. PANTALLA DE VIAJE ACTIVO
 // ---------------------------------------------------------------------------
 class ActiveTripScreen extends StatefulWidget {
   const ActiveTripScreen({super.key});
