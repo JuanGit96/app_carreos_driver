@@ -1,13 +1,14 @@
 // ===========================================================================
-// APP CONDUCTOR (DRIVER) - VERSIÓN MAESTRA FINAL (CORREGIDA V2)
+// APP CONDUCTOR (DRIVER) - VERSIÓN MAESTRA FINAL (CORREGIDA V3)
 // ===========================================================================
 //
 // CARACTERÍSTICAS INCLUIDAS:
 // 1. Auth & Dashboard (Online/Offline) + Solicitud detallada.
-// 2. Servicios Agendados/En Curso en el Dashboard.
+// 2. Servicios Agendados (con detalle y acciones) / En Curso.
 // 3. Historial Detallado (Ruta, Carga, Ganancia Neta).
 // 4. Módulo de Pagos (Consignaciones de la App al Conductor).
 // 5. Registro de Vehículo (Normativa Colombia).
+// 6. Navegación GPS con botón de retorno al Home.
 
 import 'package:flutter/material.dart'; // [EDU] UI Base
 import 'package:google_fonts/google_fonts.dart'; // [EDU] Fuentes
@@ -241,7 +242,9 @@ class _DriverDashboardState extends State<DriverDashboard> {
                   if (_isOnline) ...[
                     const Text("Servicios Asignados", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.blue)),
                     const SizedBox(height: 10),
+                    // [MODIFICADO] Ahora pasamos los datos para abrir el detalle
                     _scheduledServiceCard(context, "Mudanza Oficina", "Mañana, 8:00 AM", "\$ 250.000", "Calle 100 -> Chía"),
+
                     _scheduledServiceCard(context, "Entrega Muebles", "En Curso", "\$ 45.000", "Homecenter -> Norte", isActive: true),
                   ] else ...[
                     const SizedBox(height: 50),
@@ -262,7 +265,15 @@ class _DriverDashboardState extends State<DriverDashboard> {
   Widget _scheduledServiceCard(BuildContext context, String title, String time, String price, String route, {bool isActive = false}) {
     return GestureDetector(
       onTap: () {
-        if(isActive) Navigator.push(context, MaterialPageRoute(builder: (context) => const ActiveTripScreen()));
+        if (isActive) {
+          // Si está en curso, va directo al mapa
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const ActiveTripScreen()));
+        } else {
+          // [NUEVO] Si es programado, va a la pantalla de detalle para aceptar/ver
+          Navigator.push(context, MaterialPageRoute(builder: (context) => ScheduledServiceDetailScreen(
+              title: title, time: time, price: price, route: route
+          )));
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
@@ -295,7 +306,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
               children: [
                 Text(price, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 5),
-                if (isActive) const Text("IR A MAPA >", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.blue))
+                Text(isActive ? "IR A MAPA >" : "VER DETALLE >", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.blue))
               ],
             )
           ],
@@ -455,7 +466,7 @@ class DriverHistoryScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 5. DETALLE DETALLADO DEL VIAJE
+// 5. DETALLE DETALLADO DEL VIAJE (HISTORIAL)
 // ---------------------------------------------------------------------------
 class DriverTripDetailScreen extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -551,7 +562,106 @@ class DriverTripDetailScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 6. GESTIÓN DE VEHÍCULOS
+// 6. DETALLE DE SERVICIO PROGRAMADO (NUEVA PANTALLA)
+// ---------------------------------------------------------------------------
+class ScheduledServiceDetailScreen extends StatelessWidget {
+  final String title;
+  final String time;
+  final String price;
+  final String route;
+
+  const ScheduledServiceDetailScreen({super.key, required this.title, required this.time, required this.price, required this.route});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Detalle Programado")),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Banner de precio
+            Container(
+              padding: const EdgeInsets.all(20),
+              width: double.infinity,
+              decoration: BoxDecoration(color: AppColors.blue, borderRadius: BorderRadius.circular(15)),
+              child: Column(
+                children: [
+                  const Text("Valor Estimado", style: TextStyle(color: Colors.white70)),
+                  Text(price, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  Text("Fecha: $time", style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 30),
+
+            // Información
+            _detailRow(Icons.work, "Servicio", title),
+            const SizedBox(height: 20),
+            _detailRow(Icons.map, "Ruta General", route),
+            const SizedBox(height: 20),
+            const Text("Detalle de Carga", style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 5),
+            Container(
+              padding: const EdgeInsets.all(15),
+              width: double.infinity,
+              decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10)),
+              child: const Text("• Cajas de archivo (x20)\n• Escritorios desarmados (x5)\n• Sillas ergonómicas (x5)"),
+            ),
+
+            const Spacer(),
+
+            // Acciones
+            Row(
+              children: [
+                Expanded(
+                    child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(foregroundColor: AppColors.red, side: const BorderSide(color: AppColors.red)),
+                        child: const Text("CANCELAR")
+                    )
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                    child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ActiveTripScreen()));
+                        },
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.green),
+                        child: const Text("INICIAR VIAJE")
+                    )
+                ),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: AppColors.blue, size: 28),
+        const SizedBox(width: 15),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+        )
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 7. GESTIÓN DE VEHÍCULOS
 // ---------------------------------------------------------------------------
 class MyVehiclesScreen extends StatelessWidget {
   const MyVehiclesScreen({super.key});
@@ -648,7 +758,7 @@ class AddVehicleScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 7. PAGOS (BILLETERA)
+// 8. PAGOS (BILLETERA)
 // ---------------------------------------------------------------------------
 class DriverPayoutsScreen extends StatelessWidget {
   const DriverPayoutsScreen({super.key});
@@ -713,7 +823,7 @@ class DriverPayoutsScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 8. PANTALLA DE VIAJE ACTIVO
+// 9. PANTALLA DE VIAJE ACTIVO
 // ---------------------------------------------------------------------------
 class ActiveTripScreen extends StatefulWidget {
   const ActiveTripScreen({super.key});
@@ -728,7 +838,15 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: AppColors.blue, title: Text(_tripStep < 2 ? "Hacia Recogida" : "Hacia Entrega", style: const TextStyle(color: Colors.white)), leading: const Icon(Icons.navigation, color: Colors.white)),
+      appBar: AppBar(
+        backgroundColor: AppColors.blue,
+        // [MODIFICADO] Cambiado Icono decorativo por Botón Funcional "Atrás"
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(_tripStep < 2 ? "Hacia Recogida" : "Hacia Entrega", style: const TextStyle(color: Colors.white)),
+      ),
       body: Column(
         children: [
           Expanded(child: Container(color: Colors.grey[300], child: const Center(child: Text("NAVEGACIÓN GPS", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black26))))),
